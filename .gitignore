@@ -82,3 +82,5 @@ pest_detection/fine_tuned_store/
 .aws/
 .codex/
 .agents/
+.modal.toml
+.modal/

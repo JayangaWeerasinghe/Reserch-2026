@@ -147,6 +147,31 @@ Sinhala model remains the correct research path when a specific provider-backed
 hosted model is not confirmed.
 See [Voice ASR modes and endpoint contract](voice_nlp/README.md).
 
+### Optional Modal Sinhala ASR endpoint
+
+The isolated Modal service can be selected through the same generic hosted
+adapter without changing `voice_nlp` code. After deploying the Modal endpoint
+with its required Bearer Secret, set these variables manually in the Railway
+`voice-nlp` service:
+
+```dotenv
+ASR_BACKEND=hosted
+HOSTED_ASR_URL=https://<modal-function-https-url>/listen
+HOSTED_ASR_MODEL=Lingalingeswaran/whisper-small-sinhala
+HOSTED_ASR_LANGUAGE=si
+HOSTED_ASR_RESPONSE_FORMAT=json
+HOSTED_ASR_TIMEOUT_SECONDS=60
+HOSTED_ASR_TEXT_FIELD=text
+HOSTED_ASR_API_KEY=<same-secret-as-the-Modal-PADDYGUARD_ASR_API_KEY>
+```
+
+Set `HOSTED_ASR_API_KEY` privately in Railway Variables; never commit or share
+its value. The Modal route accepts the existing adapter's multipart `file` and
+form fields, returns JSON `text`, and pins inference to
+`Lingalingeswaran/whisper-small-sinhala`. Keep the Groq URL/model configuration
+available for rollback or comparison; these instructions do not change any
+Railway production variables.
+
 `ASR_BACKEND=local` preserves the Sinhala Whisper research model but now loads
 it lazily on first local transcription. Local first-use downloads and model
 allocation can still cause latency or OOM in a 1 GB container. Hosted mode avoids
