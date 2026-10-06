@@ -46,8 +46,11 @@ MODEL_PATH=models/paddyguard_best_classifier.pkl
 TFIDF_PATH=models/paddyguard_tfidf.pkl
 ASR_MODEL_ID=Lingalingeswaran/whisper-small-sinhala
 ASR_BACKEND=hosted
-HOSTED_ASR_URL=<compatible-provider-endpoint>
-HOSTED_ASR_API_KEY=<secret-if-required-or-empty>
+HOSTED_ASR_URL=https://api.groq.com/openai/v1/audio/transcriptions
+HOSTED_ASR_API_KEY=<set-as-railway-secret>
+HOSTED_ASR_MODEL=whisper-large-v3
+HOSTED_ASR_LANGUAGE=si
+HOSTED_ASR_RESPONSE_FORMAT=json
 HOSTED_ASR_TIMEOUT_SECONDS=60
 HOSTED_ASR_TEXT_FIELD=text
 REDIS_URL=<your-external-redis-connection-url>
@@ -55,6 +58,12 @@ MONGO_URL=
 ALLOWED_ORIGINS=https://<your-frontend>.vercel.app
 RAILWAY_HEALTHCHECK_TIMEOUT_SEC=600
 ```
+
+Groq is used as the hosted ASR inference provider for the low-memory Railway
+prototype. Local research mode continues to use the existing Sinhala Whisper
+model through `ASR_BACKEND=local`; hosted deployment results must not be treated
+as automatically equivalent to local-model research results. If reported
+academically, WER/CER should be evaluated separately for each ASR configuration.
 
 User management:
 

@@ -27,25 +27,36 @@ and record hosted performance separately from local Whisper research results.
 ### Hosted endpoint contract
 
 The configured endpoint must accept `POST` multipart audio under the field
-`file`. File streams close after the request; the existing `/diagnose` temporary
-file is removed in its `finally` block. No retained audio copy is created.
-The endpoint must return a 2xx JSON object with a top-level string field:
+`file`. The hosted adapter sends the audio with the original filename and a safe
+MIME type, and it closes the file handle promptly after the request. The existing
+`/diagnose` temporary file is removed in its `finally` block. No retained audio
+copy is created.
+
+For Groq/OpenAI-compatible transcription, the adapter sends the following form
+fields alongside the uploaded audio:
+
+```text
+file=<audio>
+model=whisper-large-v3
+language=si
+response_format=json
+```
+
+`HOSTED_ASR_MODEL`, `HOSTED_ASR_LANGUAGE`, and `HOSTED_ASR_RESPONSE_FORMAT`
+remain configurable through environment variables, while `HOSTED_ASR_TEXT_FIELD`
+keeps the generic top-level response parsing. The endpoint must return a 2xx JSON
+object with a top-level string field such as:
 
 ```json
 {"text": "Sinhala transcription"}
 ```
 
-`HOSTED_ASR_TEXT_FIELD` selects a different top-level field when required.
-Nested paths, streaming responses, raw-audio-only endpoints and vendor-specific
-schemas are not supported by this generic contract; use a compatible endpoint
-or an external adapter. The transcript must be Sinhala because the existing
-translation and diagnosis pipeline expects Sinhala. No vendor is selected here.
-
 `HOSTED_ASR_API_KEY` is optional and is sent as `Authorization: Bearer <key>`
 when configured. Empty values omit that header. Keep credentials in Railway
 Variables and use HTTPS for external production endpoints. Configuration errors
 are mode-aware: hosted URL must be valid HTTP(S), timeout positive and finite,
-and text field nonempty; local mode does not require hosted settings.
+text field nonempty, model nonempty, and local mode does not require hosted
+settings.
 
 Timeouts yield HTTP 504, network failures 503, and unsuccessful/malformed hosted
 responses 502, with safe `detail` messages that omit provider diagnostics and

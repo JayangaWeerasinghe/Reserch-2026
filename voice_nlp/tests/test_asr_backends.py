@@ -21,8 +21,14 @@ class RequestErrorStub(Exception):
 class ASRBackendTests(unittest.TestCase):
     def setUp(self):
         self.env = patch.dict(os.environ, {
-            "ASR_BACKEND": "hosted", "HOSTED_ASR_URL": "https://asr.example.invalid/transcribe",
-            "HOSTED_ASR_API_KEY": "", "HOSTED_ASR_TIMEOUT_SECONDS": "60", "HOSTED_ASR_TEXT_FIELD": "text",
+            "ASR_BACKEND": "hosted",
+            "HOSTED_ASR_URL": "https://api.groq.com/openai/v1/audio/transcriptions",
+            "HOSTED_ASR_API_KEY": "",
+            "HOSTED_ASR_MODEL": "whisper-large-v3",
+            "HOSTED_ASR_LANGUAGE": "si",
+            "HOSTED_ASR_RESPONSE_FORMAT": "json",
+            "HOSTED_ASR_TIMEOUT_SECONDS": "60",
+            "HOSTED_ASR_TEXT_FIELD": "text",
         })
         self.env.start()
         asr._provider = None
@@ -109,6 +115,9 @@ class ASRBackendTests(unittest.TestCase):
         result, client = self.request(Mock(status_code=200, json=Mock(return_value={'text': 'test transcription'})))
         self.assertEqual(result, 'test transcription')
         self.assertEqual(client.post.call_args.kwargs['headers'], {})
+        self.assertEqual(client.post.call_args.kwargs['data']['model'], 'whisper-large-v3')
+        self.assertEqual(client.post.call_args.kwargs['data']['language'], 'si')
+        self.assertEqual(client.post.call_args.kwargs['data']['response_format'], 'json')
         audio = client.post.call_args.kwargs['files']['file'][1]
         self.assertTrue(audio.closed)
 
@@ -118,6 +127,18 @@ class ASRBackendTests(unittest.TestCase):
         result, client = self.request(Mock(status_code=200, json=Mock(return_value={'transcript': 'result'})))
         self.assertEqual(result, 'result')
         self.assertEqual(client.post.call_args.kwargs['headers'], {'Authorization': 'Bearer dummy-offline-key'})
+        self.assertEqual(client.post.call_args.kwargs['data']['model'], 'whisper-large-v3')
+        self.assertEqual(client.post.call_args.kwargs['data']['language'], 'si')
+
+    def test_language_field_is_omitted_when_empty(self):
+        os.environ['HOSTED_ASR_LANGUAGE'] = ''
+        result, client = self.request(Mock(status_code=200, json=Mock(return_value={'text': 'silent mode'})))
+        self.assertEqual(result, 'silent mode')
+        self.assertNotIn('language', client.post.call_args.kwargs['data'])
+
+    def test_successful_response_uses_text_key(self):
+        result, _ = self.request(Mock(status_code=200, json=Mock(return_value={'text': 'සිංහල පරීක්ෂණ පෙළ'})))
+        self.assertEqual(result, 'සිංහල පරීක්ෂණ පෙළ')
 
     def test_timeout(self):
         with self.assertRaises(asr.ASRError) as context:
@@ -145,9 +166,9 @@ class ASRBackendTests(unittest.TestCase):
             with self.assertRaisesRegex(asr.ASRError, 'transcription string'):
                 self.request(Mock(status_code=200, json=Mock(return_value=payload)))
 
-    def test_empty_text_preserves_endpoint_handling(self):
-        result, _ = self.request(Mock(status_code=200, json=Mock(return_value={'text': ''})))
-        self.assertEqual(result, '')
+    def test_empty_text_fails_safely(self):
+        with self.assertRaisesRegex(asr.ASRError, 'transcription string'):
+            self.request(Mock(status_code=200, json=Mock(return_value={'text': ''})))
 
 
 if __name__ == '__main__':
