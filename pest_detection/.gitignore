@@ -1,0 +1,16 @@
+.venv/
+venv/
+env/
+ENV/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.coverage
+.env
+*.log
+.DS_Store
+Thumbs.db
+# Runtime files
+uploads/
+temp/
+# Keep the research model checkpoint in Git only if the repository policy permits it.

@@ -1,0 +1,97 @@
+services:
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - gateway
+
+  gateway:
+    build: ./gateway
+    ports:
+      - "8000:8000"
+    env_file: ./gateway/.env
+    environment:
+      - JWT_SECRET=${JWT_SECRET:-change-me}
+      - ALLOWED_ORIGINS=http://localhost,http://localhost:80,http://localhost:5173
+    depends_on:
+      - voice_nlp
+      - leaf_disease_detection
+      - pest_detection
+      - treatment_advisory_chatbot
+      - user_management
+
+  voice_nlp:
+    build: ./voice_nlp
+    restart: on-failure
+    ports:
+      - "8001:8001"
+    env_file: ./voice_nlp/.env
+    volumes:
+      - ./voice_nlp/models:/app/models
+      - voice_nlp_hf_cache:/root/.cache/huggingface
+
+  leaf_disease_detection:
+    build: ./leaf_disease_detection
+    ports:
+      - "8002:8002"
+    env_file: ./leaf_disease_detection/.env
+    volumes:
+      - ./leaf_disease_detection/models:/app/models
+
+  pest_detection:
+    build: ./pest_detection
+    ports:
+      - "8003:8003"
+    env_file: ./pest_detection/.env
+    volumes:
+      - ./pest_detection/models:/app/models
+
+  treatment_advisory_chatbot:
+    build: ./treatment_advisory_chatbot
+    ports:
+      - "8004:8004"
+    env_file: ./treatment_advisory_chatbot/.env
+
+  user_management:
+    build: ./user_management
+    ports:
+      - "8005:8005"
+    env_file: ./user_management/.env
+    environment:
+      USE_SQLITE: "false"
+      POSTGRES_URL: postgresql://${POSTGRES_USER:-paddyguard}:${POSTGRES_PASSWORD:-local-dev-only}@postgres:5432/${POSTGRES_DB:-paddyguard_db}
+      JWT_SECRET: ${JWT_SECRET:-change-me}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-paddyguard}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-local-dev-only}
+      POSTGRES_DB: ${POSTGRES_DB:-paddyguard_db}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  mongo:
+    image: mongo:7-jammy
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  postgres_data:
+  mongo_data:
+  voice_nlp_hf_cache:

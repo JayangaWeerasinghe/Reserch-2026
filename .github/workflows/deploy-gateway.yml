@@ -1,0 +1,14 @@
+name: Deploy gateway to Cloud
+on:
+  push:
+    branches: [main]
+    paths: ["gateway/**"]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and push Docker image
+        run: |
+          docker build -t gateway ./gateway
+          echo "Add your cloud push commands here"

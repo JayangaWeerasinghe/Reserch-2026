@@ -1,0 +1,15 @@
+Copy your trained file here with this exact name:
+
+best_efficientnetb3_initial.pth
+
+Expected checkpoint structure:
+{
+  "model_state_dict": ...,
+  "class_names": [
+    "Bacterial_Blight",
+    "Brown_Spot",
+    "Healthy",
+    "Leaf_Blast"
+  ],
+  "image_size": 300
+}

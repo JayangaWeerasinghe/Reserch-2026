@@ -1,0 +1,461 @@
+{
+  "info": {
+    "name": "PaddyGuard - Leaf Disease Detection",
+    "description": "Endpoints for the leaf_disease_detection Flask service. Set the `base_url` variable and run Auth > Login first to populate `token`.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8002" },
+    { "key": "token", "value": "" },
+    { "key": "case_id", "value": "" },
+    { "key": "batch_id", "value": "" },
+    { "key": "job_id", "value": "" },
+    { "key": "user_id", "value": "" },
+    { "key": "expert_id", "value": "1" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Root",
+          "request": { "method": "GET", "url": "{{base_url}}/" }
+        },
+        {
+          "name": "Health check",
+          "request": { "method": "GET", "url": "{{base_url}}/api/health" }
+        }
+      ]
+    },
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Register",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// no-op; register does not return a token"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/api/auth/register",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Farmer\",\n  \"email\": \"test.farmer@example.com\",\n  \"password\": \"password123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.token) { pm.collectionVariables.set('token', res.token); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": "{{base_url}}/api/auth/login",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"username\": \"test.farmer@example.com\",\n  \"password\": \"password123\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "User",
+      "item": [
+        {
+          "name": "Get current user",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/user/me"
+          }
+        },
+        {
+          "name": "Get my history",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/user/history"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Analyze",
+      "item": [
+        {
+          "name": "Analyze leaf image",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.case_id) { pm.collectionVariables.set('case_id', res.case_id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/analyze",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": [] },
+                { "key": "city", "value": "Colombo", "type": "text" },
+                { "key": "field_area_acres", "value": "2", "type": "text" },
+                { "key": "affected_field_percentage", "value": "15", "type": "text" },
+                { "key": "rice_variety", "value": "BG 352", "type": "text" },
+                { "key": "growth_stage", "value": "Tillering", "type": "text" },
+                { "key": "expected_yield_kg_per_acre", "value": "2000", "type": "text" },
+                { "key": "treatment_applied", "value": "false", "type": "text" }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Cases",
+      "item": [
+        {
+          "name": "List cases",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/cases"
+          }
+        },
+        {
+          "name": "Update case feedback",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{base_url}}/api/cases/{{case_id}}/feedback",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"farmer_confirmation\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Refresh case weather",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/cases/{{case_id}}/refresh-weather"
+          }
+        },
+        {
+          "name": "Delete case",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/cases/{{case_id}}"
+          }
+        },
+        {
+          "name": "Get case image",
+          "request": { "method": "GET", "url": "{{base_url}}/api/images/:filename" }
+        },
+        {
+          "name": "Get case gradcam image",
+          "request": { "method": "GET", "url": "{{base_url}}/api/gradcam/:filename" }
+        }
+      ]
+    },
+    {
+      "name": "Expert Review",
+      "item": [
+        {
+          "name": "List review queue",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/expert/review-queue"
+          }
+        },
+        {
+          "name": "Get review case",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/expert/review-queue/{{case_id}}"
+          }
+        },
+        {
+          "name": "Verify review case",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{base_url}}/api/expert/review-queue/{{case_id}}/verify",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"expert_label\": \"Bacterial_Blight\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Dashboard stats",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/expert/dashboard-stats"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Active Learning",
+      "item": [
+        {
+          "name": "Prepare batch",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.batch_id) { pm.collectionVariables.set('batch_id', res.batch_id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/expert/active-learning/prepare-batch"
+          }
+        },
+        {
+          "name": "List batches",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/expert/active-learning/batches"
+          }
+        },
+        {
+          "name": "Get batch",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/expert/active-learning/batches/{{batch_id}}"
+          }
+        },
+        {
+          "name": "Start batch retraining",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/expert/active-learning/batches/{{batch_id}}/start"
+          }
+        },
+        {
+          "name": "Export batch",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/expert/active-learning/batches/{{batch_id}}/export"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Model Candidates",
+      "item": [
+        {
+          "name": "Upload model candidate",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/expert/model-candidates/upload",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                { "key": "file", "type": "file", "src": [] },
+                { "key": "test_accuracy", "value": "0.98", "type": "text" },
+                { "key": "macro_f1", "value": "0.98", "type": "text" },
+                { "key": "notes", "value": "Candidate from Postman test", "type": "text" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "List model candidates",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/expert/model-candidates"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Fine-Tuning",
+      "item": [
+        {
+          "name": "Check readiness",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/expert/fine-tune/readiness"
+          }
+        },
+        {
+          "name": "Start fine-tuning",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "const res = pm.response.json();",
+                  "if (res.job_id) { pm.collectionVariables.set('job_id', res.job_id); }"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/expert/fine-tune/start"
+          }
+        },
+        {
+          "name": "Get job status",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/expert/fine-tune/status/{{job_id}}"
+          }
+        },
+        {
+          "name": "List jobs",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/expert/fine-tune/jobs"
+          }
+        },
+        {
+          "name": "Get deployed model",
+          "request": { "method": "GET", "url": "{{base_url}}/api/expert/deployed-model" }
+        },
+        {
+          "name": "Promote candidate",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/expert/fine-tune/{{job_id}}/promote"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Expert Management",
+      "item": [
+        {
+          "name": "List experts",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/expert-management"
+          }
+        },
+        {
+          "name": "Create expert",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{base_url}}/api/expert-management",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Test Expert\",\n  \"username\": \"test.expert\",\n  \"password\": \"password123\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Toggle expert status",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/expert-management/{{expert_id}}/toggle-status"
+          }
+        }
+      ]
+    },
+    {
+      "name": "Admin - Users",
+      "item": [
+        {
+          "name": "List users",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/admin/users"
+          }
+        },
+        {
+          "name": "Get user",
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/admin/users/{{user_id}}"
+          }
+        },
+        {
+          "name": "Update user",
+          "request": {
+            "method": "PUT",
+            "header": [
+              { "key": "Authorization", "value": "Bearer {{token}}" },
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "url": "{{base_url}}/api/admin/users/{{user_id}}",
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Updated Name\",\n  \"email\": \"updated@example.com\",\n  \"is_active\": true\n}"
+            }
+          }
+        },
+        {
+          "name": "Deactivate user",
+          "request": {
+            "method": "DELETE",
+            "header": [{ "key": "Authorization", "value": "Bearer {{token}}" }],
+            "url": "{{base_url}}/api/admin/users/{{user_id}}"
+          }
+        }
+      ]
+    }
+  ]
+}

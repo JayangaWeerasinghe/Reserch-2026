@@ -1,0 +1,14 @@
+name: Deploy voice_nlp to Cloud
+on:
+  push:
+    branches: [main]
+    paths: ["voice_nlp/**"]
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and push Docker image
+        run: |
+          docker build -t voice_nlp ./voice_nlp
+          echo "Add your cloud push commands here (GCP/AWS/Azure)"

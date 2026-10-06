@@ -1,0 +1,13 @@
+Flask>=3.0.0
+Flask-CORS>=5.0.0
+python-dotenv>=1.0.0
+SQLAlchemy>=2.0.0
+requests>=2.31.0
+Pillow>=11.0.0
+numpy>=2.0.0
+# torch/torchvision are installed separately in the Dockerfile (CPU-only wheels)
+opencv-python-headless>=4.10.0
+pymongo>=4.6.0
+dnspython>=2.6.0
+cloudinary>=1.36.0
+gunicorn>=21.2.0
