@@ -24,6 +24,13 @@ Hosted ASR is a deployment adaptation, not a replacement for the local research
 model. WER/CER and downstream accuracy equivalence are not established. Evaluate
 and record hosted performance separately from local Whisper research results.
 
+The repository does not verify provider-level model support. Groq may or may not
+accept `Lingalingeswaran/whisper-small-sinhala` as a hosted model name; the code
+keeps the value configurable but does not assume support. For the exact
+Sinhala-specialized model, the safest and most reliable approach is to use the local
+lazy-load backend for research and to route production to a hosted provider only
+after the provider explicitly confirms model compatibility.
+
 ### Hosted endpoint contract
 
 The configured endpoint must accept `POST` multipart audio under the field

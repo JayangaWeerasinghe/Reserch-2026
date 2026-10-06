@@ -138,6 +138,13 @@ For low-memory Railway, use `ASR_BACKEND=hosted`: local Whisper is never
 imported, downloaded or loaded. Startup loads the classifier and validates the
 hosted adapter; `/health` performs no external requests. Set a compatible hosted
 endpoint and optional Bearer key in Railway Variables before redeployment.
+
+The repository itself cannot verify whether Groq supports the exact
+`Lingalingeswaran/whisper-small-sinhala` model string. The code is intentionally
+provider-generic and model-configurable, so the production service can remain
+hosted without hard-coding a model name that the provider may reject. The local
+Sinhala model remains the correct research path when a specific provider-backed
+hosted model is not confirmed.
 See [Voice ASR modes and endpoint contract](voice_nlp/README.md).
 
 `ASR_BACKEND=local` preserves the Sinhala Whisper research model but now loads

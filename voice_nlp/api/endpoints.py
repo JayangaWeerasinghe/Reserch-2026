@@ -12,7 +12,7 @@ Novelties added in this version:
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from pydantic import BaseModel
 
-from pipeline.asr import transcribe_audio, ASRError
+from pipeline.asr import transcribe_audio, ASRError, get_asr_provider
 from pipeline.translator import translate_to_english
 from pipeline.classifier import classify_with_ood
 from pipeline.followup import get_followup_question, resolve_answer
@@ -51,6 +51,13 @@ def _cleanup(path: str) -> None:
         os.unlink(path)
     except OSError:
         pass
+
+
+def _with_asr_metadata(payload: dict) -> dict:
+    provider = get_asr_provider()
+    payload["asr_backend"] = provider.backend
+    payload["asr_model"] = getattr(provider, "model_name", "unknown")
+    return payload
 
 
 @router.post("/diagnose")
@@ -96,28 +103,27 @@ async def diagnose(audio: UploadFile = File(...)):
             quality.passed, quality.snr, quality.silence_ratio, quality.duration
         )
         if not quality.passed:
-            return {
-                "disease"           : "Unknown / OOD",
-                "label_id"          : -1,
-                "confidence"        : 0.0,
-                "is_ood"            : True,
-                "ood_reason"        : "audio_quality",
-                "needs_followup"    : False,
-                "status"            : "Audio quality check failed",
-                "message"           : quality.reason,
-                "message_en"        : quality.reason_en,
-                "all_scores"        : {},
-                "sinhala_transcript": None,
-                "english_translation": None,
-                "session_id"        : None,
-                "followup_question" : None,
-                "followup_question_en": None,
-                "tts_audio_b64"     : None,   # Novelty 4
-                "severity"          : None,   # Novelty 5
-                "confidence_trajectory": [],  # Novelty 3
-                "audio_quality"     : quality.to_dict(),  # Novelty 2
-            }
-
+                return _with_asr_metadata({
+                    "disease"           : "Unknown / OOD",
+                    "label_id"          : -1,
+                    "confidence"        : 0.0,
+                    "is_ood"            : True,
+                    "ood_reason"        : "audio_quality",
+                    "needs_followup"    : False,
+                    "status"            : "Audio quality check failed",
+                    "message"           : quality.reason,
+                    "message_en"        : quality.reason_en,
+                    "all_scores"        : {},
+                    "sinhala_transcript": None,
+                    "english_translation": None,
+                    "session_id"        : None,
+                    "followup_question" : None,
+                    "followup_question_en": None,
+                    "tts_audio_b64"     : None,   # Novelty 4
+                    "severity"          : None,   # Novelty 5
+                    "confidence_trajectory": [],  # Novelty 3
+                    "audio_quality"     : quality.to_dict(),  # Novelty 2
+                })
         # ── ASR: audio → Sinhala text ──────────────────────────────────
         logger.info("ASR: transcribing audio (%d bytes)...", len(audio_bytes))
         sinhala_text = transcribe_audio(tmp_path)
@@ -191,7 +197,7 @@ async def diagnose(audio: UploadFile = File(...)):
             # TTS for the follow-up question (Novelty 4)
             question_tts = synthesise_question(question_dict["sinhala"])
 
-            return {
+            return _with_asr_metadata({
                 **result,
                 "sinhala_transcript"    : sinhala_text,
                 "english_translation"   : english_text,
@@ -213,10 +219,10 @@ async def diagnose(audio: UploadFile = File(...)):
                     }
                 ],
                 "audio_quality"         : quality.to_dict(),# Novelty 2
-            }
+            })
 
         # Confident or OOD result
-        return {
+        return _with_asr_metadata({
             **result,
             "sinhala_transcript"    : sinhala_text,
             "english_translation"   : english_text,
@@ -229,7 +235,7 @@ async def diagnose(audio: UploadFile = File(...)):
             "severity"              : severity if not result["is_ood"] else None,  # Novelty 5
             "confidence_trajectory" : [],            # Novelty 3 — no session
             "audio_quality"         : quality.to_dict(),  # Novelty 2
-        }
+        })
 
     except ASRError as e:
         logger.warning("ASR request failed: %s", str(e))

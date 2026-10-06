@@ -140,6 +140,24 @@ class ASRBackendTests(unittest.TestCase):
         result, _ = self.request(Mock(status_code=200, json=Mock(return_value={'text': 'සිංහල පරීක්ෂණ පෙළ'})))
         self.assertEqual(result, 'සිංහල පරීක්ෂණ පෙළ')
 
+    def test_local_mode_uses_sinhala_specialized_model_by_default(self):
+        os.environ['ASR_BACKEND'] = 'local'
+        provider = asr.get_asr_provider()
+        self.assertIsInstance(provider, asr.LocalWhisperASR)
+        self.assertEqual(provider.model_name, 'Lingalingeswaran/whisper-small-sinhala')
+
+    def test_hosted_model_remains_configurable(self):
+        os.environ['HOSTED_ASR_MODEL'] = 'custom-remote-model'
+        provider = asr.HostedASR()
+        self.assertEqual(provider.model_name, 'custom-remote-model')
+
+    def test_no_secret_is_logged_in_transcription_error(self):
+        os.environ['HOSTED_ASR_API_KEY'] = 'test-api-key'
+        with patch('pipeline.asr.logger.warning') as warning:
+            with self.assertRaises(asr.ASRError):
+                self.request(Mock(status_code=401, json=Mock(return_value={'error': 'bad'})))
+        self.assertTrue(all('test-api-key' not in str(call) for call in warning.call_args_list))
+
     def test_timeout(self):
         with self.assertRaises(asr.ASRError) as context:
             self.request(error=TimeoutErrorStub('sensitive provider diagnostic'))

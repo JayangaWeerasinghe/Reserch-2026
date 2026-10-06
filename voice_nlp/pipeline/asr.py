@@ -7,6 +7,7 @@ import logging
 import math
 import mimetypes
 import os
+import time
 from pathlib import Path
 from threading import Lock
 from urllib.parse import urlsplit
@@ -27,6 +28,8 @@ class ASRError(RuntimeError):
 
 class LocalWhisperASR:
     def __init__(self):
+        self.backend = "local"
+        self.model_name = os.getenv("ASR_MODEL_ID", "Lingalingeswaran/whisper-small-sinhala").strip() or "Lingalingeswaran/whisper-small-sinhala"
         self._processor = None
         self._model = None
         self._device = None
@@ -65,6 +68,7 @@ class LocalWhisperASR:
 class HostedASR:
     """POST multipart `file` to a generic OpenAI-compatible transcription endpoint."""
     def __init__(self):
+        self.backend = "hosted"
         self.url = os.getenv("HOSTED_ASR_URL", "").strip()
         try:
             parsed = urlsplit(self.url)
@@ -76,7 +80,8 @@ class HostedASR:
             raise ASRConfigurationError("HOSTED_ASR_URL must be a valid HTTP(S) endpoint without embedded credentials")
 
         self.api_key = os.getenv("HOSTED_ASR_API_KEY", "").strip()
-        self.model = os.getenv("HOSTED_ASR_MODEL", "whisper-large-v3").strip() or "whisper-large-v3"
+        self.model_name = os.getenv("HOSTED_ASR_MODEL", "whisper-large-v3").strip() or "whisper-large-v3"
+        self.model = self.model_name
         raw_language = os.getenv("HOSTED_ASR_LANGUAGE", "si").strip()
         self.language = raw_language if raw_language else None
         self.response_format = os.getenv("HOSTED_ASR_RESPONSE_FORMAT", "json").strip() or "json"
@@ -170,4 +175,12 @@ def preload_asr() -> None:
 
 
 def transcribe_audio(audio_path: str) -> str:
-    return get_asr_provider().transcribe(audio_path)
+    provider = get_asr_provider()
+    start = time.perf_counter()
+    try:
+        transcript = provider.transcribe(audio_path)
+        logger.info("[asr] backend=%s model=%s transcription_ok latency=%.3fs", provider.backend, getattr(provider, "model_name", "unknown"), time.perf_counter() - start)
+        return transcript
+    except Exception:
+        logger.warning("[asr] backend=%s model=%s transcription_failed latency=%.3fs", provider.backend, getattr(provider, "model_name", "unknown"), time.perf_counter() - start)
+        raise
