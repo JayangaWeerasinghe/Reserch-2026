@@ -45,6 +45,11 @@ PORT=8001
 MODEL_PATH=models/paddyguard_best_classifier.pkl
 TFIDF_PATH=models/paddyguard_tfidf.pkl
 ASR_MODEL_ID=Lingalingeswaran/whisper-small-sinhala
+ASR_BACKEND=hosted
+HOSTED_ASR_URL=<compatible-provider-endpoint>
+HOSTED_ASR_API_KEY=<secret-if-required-or-empty>
+HOSTED_ASR_TIMEOUT_SECONDS=60
+HOSTED_ASR_TEXT_FIELD=text
 REDIS_URL=<your-external-redis-connection-url>
 MONGO_URL=
 ALLOWED_ORIGINS=https://<your-frontend>.vercel.app
@@ -120,23 +125,19 @@ no Git LFS configuration is needed. Docker includes them. See
 [artifact instructions](voice_nlp/models/README.md). Their runtime compatibility
 still requires actual model-loading tests; fake artifacts must never be generated.
 
-Whisper-small Sinhala remains eagerly loaded during startup. `/health` becomes
-available after startup completes. This preserves the existing ASR behavior and
-avoids a first-request model download within the proxy request. Startup errors
-produce clear configuration/resource guidance; missing classifier paths log an
-explicit error while preserving the existing classifier failure behavior.
+For low-memory Railway, use `ASR_BACKEND=hosted`: local Whisper is never
+imported, downloaded or loaded. Startup loads the classifier and validates the
+hosted adapter; `/health` performs no external requests. Set a compatible hosted
+endpoint and optional Bearer key in Railway Variables before redeployment.
+See [Voice ASR modes and endpoint contract](voice_nlp/README.md).
 
-Hugging Face downloads happen on first container startup, not Docker build, and
-may cause long cold starts, startup timeouts, high disk/RAM use, or trial OOM.
-The Docker healthcheck has a 600-second start period; separately configure
-Railway healthcheck timeout to 600 seconds (adjust after measuring).
-See [Railway healthchecks](https://docs.railway.com/deployments/healthchecks).
-Whisper-small plus PyTorch, scientific libraries, and inference buffers should
-not be assumed to fit 1 GB RAM. Test real deployment peak memory and latency,
-use one worker, and increase service memory if required. Container restarts can
-redownload weights without a persistent Hugging Face cache; configure an optional
-volume/cache only after measuring. No model substitution or algorithm change
-was made to reduce memory.
+`ASR_BACKEND=local` preserves the Sinhala Whisper research model but now loads
+it lazily on first local transcription. Local first-use downloads and model
+allocation can still cause latency or OOM in a 1 GB container. Hosted mode avoids
+that allocation; scientific libraries, audio buffers and concurrent requests
+still require measured memory validation. No hosted/local accuracy equivalence
+is claimed. The existing Docker healthcheck grace period and Railway timeout
+can remain configured; hosted startup does not wait for Whisper.
 
 ## Local development and Git safety
 
@@ -158,11 +159,11 @@ for Voice were removed to match the CPU image.
 Root ignores cover all `.env*` except `.env.example`, SQLite databases, private
 keys, Python/Node caches, downloaded model caches, datasets, generated leaf data,
 and unrelated large model formats. Existing data and credentials were preserved.
-The working folder has an empty, read-only `.git` directory rather than a valid
-Git repository, so historical tracking/secrets cannot be audited. Initialize or
-use a proper writable checkout before running commit commands. Inspect staged filenames and diffs before the initial commit; never
-paste secret values into review output. If connecting an existing remote with
-history, use its proper checkout and examine history separately.
+Git status and tracked paths should be reviewed before committing. Actual `.env`
+and database files are ignored and untracked in the current checkout. Inspect
+staged filenames and diffs without pasting credentials; historical secret leakage
+requires a separate history audit if the repository was previously published.
+
 
 ## Validation commands on a provisioned machine
 

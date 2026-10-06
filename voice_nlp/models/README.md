@@ -13,5 +13,5 @@ these small files; Git LFS is unnecessary and no LFS checkout is required.
 Supply the authentic trained pair before deploying any checkout that lacks them.
 Never create fake placeholders or retrain substitute models to make deployment
 pass. Load only trusted pickle/joblib files, which can execute code. Validate
-compatibility with the pinned scikit-learn 1.5.2 runtime. Presence and size have
+compatibility with the pinned scikit-learn 1.6.1 runtime. Presence and size have
 been checked here; loading and prediction require the provisioned runtime tests.

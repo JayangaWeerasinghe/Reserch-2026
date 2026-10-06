@@ -18,7 +18,7 @@ logger = logging.getLogger("voice_nlp")
 
 from api.endpoints import router
 from pipeline.classifier import load_models
-from pipeline.asr import preload_asr
+from pipeline.asr import get_asr_provider
 
 
 @asynccontextmanager
@@ -34,12 +34,12 @@ async def lifespan(app: FastAPI):
             logger.error("Required classifier artifact missing: %s; classification cannot work", variable)
     try:
         load_models()
-        logger.info("Loading ASR (Whisper) model eagerly; healthcheck waits for completion...")
-        preload_asr()
+        # Validate the selected adapter without local model loading or HTTP calls.
+        get_asr_provider()
     except Exception:
         logger.error("Model startup failed; verify trained artifacts, Hugging Face access and available RAM")
         raise
-    logger.info("All models loaded — ready to serve on port %s",
+    logger.info("Classifier loaded and ASR configured — ready to serve on port %s",
                 os.getenv("PORT", os.getenv("SERVICE_PORT", "8001")))
     yield
     # ── Shutdown ─────────────────────────────────────────────────────
@@ -78,7 +78,7 @@ if __name__ == "__main__":
     uvicorn.run(
         "main:app",
         host      = "0.0.0.0",
-        port      = int(os.getenv("PORT", os.getenv("PORT", os.getenv("SERVICE_PORT", "8001")))),
+        port      = int(os.getenv("PORT", os.getenv("SERVICE_PORT", "8001"))),
         reload    = False,
         log_level = "info",
     )

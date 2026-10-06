@@ -12,7 +12,7 @@ Novelties added in this version:
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from pydantic import BaseModel
 
-from pipeline.asr import transcribe_audio
+from pipeline.asr import transcribe_audio, ASRError
 from pipeline.translator import translate_to_english
 from pipeline.classifier import classify_with_ood
 from pipeline.followup import get_followup_question, resolve_answer
@@ -126,7 +126,7 @@ async def diagnose(audio: UploadFile = File(...)):
                 status_code=400,
                 detail="හඬ හඳුනා ගත නොහැකි විය. කරුණාකර පැහැදිලිව කතා කර නැවත උත්සාහ කරන්න."
             )
-        logger.info("ASR result: %s", sinhala_text)
+        logger.info("ASR transcription complete")
 
         # ── Translate: Sinhala → English ───────────────────────────────
         english_text = translate_to_english(sinhala_text)
@@ -231,6 +231,9 @@ async def diagnose(audio: UploadFile = File(...)):
             "audio_quality"         : quality.to_dict(),  # Novelty 2
         }
 
+    except ASRError as e:
+        logger.warning("ASR request failed: %s", str(e))
+        raise HTTPException(status_code=e.status_code, detail=str(e)) from None
     except HTTPException:
         raise
     except Exception as e:
