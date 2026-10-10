@@ -2,6 +2,7 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from services.service_client import downstream_response
+from services.activity import observe
 import httpx, os, io
 
 router = APIRouter()
@@ -32,6 +33,8 @@ async def _forward(request: Request, method: str, path: str,
                 headers=headers, files=files,
                 json=json, params=params
             )
+        if path == "/api/analyze" and method == "POST":
+            await observe(request, resp, "LEAF_DIAGNOSIS_COMPLETED")
         try:
             content = resp.json()
         except ValueError:

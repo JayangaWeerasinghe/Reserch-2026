@@ -1,18 +1,20 @@
 """Routes chatbot requests to C4 treatment_advisory_chatbot service."""
-from fastapi import APIRouter, HTTPException
+from fastapi import Request, APIRouter, HTTPException
 from fastapi.responses import JSONResponse
 from services.service_client import downstream_response, service_base_url
+from services.activity import observe
 import httpx, os
 
 router = APIRouter()
 TREATMENT_CHATBOT_URL = service_base_url("TREATMENT_CHATBOT_URL", "http://treatment_advisory_chatbot:8004", "http://localhost:8004")
 
 @router.post("/message")
-async def send_message(payload: dict):
+async def send_message(request: Request, payload: dict):
     """Forward chat message to C4 RAG chatbot."""
     try:
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(f"{TREATMENT_CHATBOT_URL}/chat", json=payload)
+            await observe(request, response, "TREATMENT_INTERACTION")
             return downstream_response(response)
     except httpx.TimeoutException:
         raise HTTPException(status_code=504, detail="Downstream service timed out")

@@ -3,10 +3,12 @@ from typing import Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 from passlib.context import CryptContext
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field, ConfigDict, field_validator
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from models.user import User, get_db
+from services.mongo import record
 from services.jwt_service import create_access_token, create_refresh_token, verify_token
 
 router = APIRouter()
@@ -14,9 +16,17 @@ pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class RegisterRequest(BaseModel):
+    model_config = ConfigDict(extra="forbid")
     email: EmailStr
-    password: str
-    full_name: Optional[str] = None
+    password: str = Field(min_length=8)
+    full_name: Optional[str] = Field(default=None, min_length=1, max_length=120)
+
+    @field_validator("password")
+    @classmethod
+    def bounded_password(cls, value):
+        if len(value.encode()) > 72:
+            raise ValueError("Password exceeds 72 UTF-8 bytes")
+        return value
 
 
 class LoginRequest(BaseModel):
@@ -45,7 +55,11 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
         full_name=payload.full_name,
     )
     db.add(user)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        raise HTTPException(409, "Email already registered")
     db.refresh(user)
 
     return TokenResponse(
@@ -57,8 +71,10 @@ def register(payload: RegisterRequest, db: Session = Depends(get_db)):
 @router.post("/login", response_model=TokenResponse)
 def login(payload: LoginRequest, db: Session = Depends(get_db)):
     user = db.query(User).filter(User.email == payload.email).first()
-    if not user or not pwd_context.verify(payload.password, user.hashed_password):
+    if not user or not user.is_active or not pwd_context.verify(payload.password, user.hashed_password):
         raise HTTPException(status_code=401, detail="Invalid email or password")
+
+    record(user.id, "LOGIN", "AUTH")
 
     return TokenResponse(
         access_token=create_access_token(user.id),
@@ -73,8 +89,9 @@ def refresh(payload: RefreshRequest, db: Session = Depends(get_db)):
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
 
-    user = db.get(User, token_payload["sub"])
-    if not user:
+    subject = token_payload.get("sub")
+    user = db.get(User, subject) if isinstance(subject, str) else None
+    if not user or not user.is_active:
         raise HTTPException(status_code=401, detail="User no longer exists")
 
     return TokenResponse(

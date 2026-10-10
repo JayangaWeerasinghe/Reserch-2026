@@ -10,7 +10,10 @@ import os
 load_dotenv()
 
 from models.user import init_db
-from routes import auth, profile
+from routes import auth, profile, community
+from services import mongo
+from pymongo.errors import PyMongoError
+from fastapi.responses import JSONResponse
 
 app = FastAPI(
     title="PaddyGuard AI — User Management",
@@ -22,6 +25,15 @@ app.add_middleware(CORSMiddleware, allow_origins=[origin.strip() for origin in o
 
 app.include_router(auth.router)
 app.include_router(profile.router)
+app.include_router(community.router)
+
+@app.exception_handler(PyMongoError)
+async def mongo_failure(request, exc):
+    return JSONResponse(status_code=503, content={"detail": "MongoDB storage unavailable"})
+
+@app.on_event("shutdown")
+async def shutdown():
+    mongo.close()
 
 @app.get("/health")
 def health():
@@ -35,6 +47,7 @@ def root():
 async def startup():
     print("[user_management] service starting on port", os.getenv("PORT", os.getenv("SERVICE_PORT", "8005")))
     init_db()
+    mongo.initialize()
 
 if __name__ == "__main__":
     import uvicorn

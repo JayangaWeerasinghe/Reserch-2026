@@ -44,6 +44,10 @@ class User(Base):
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
     full_name = Column(String, nullable=True)
+    role = Column(String, nullable=False, default="FARMER", server_default="FARMER")
+    phone = Column(String, nullable=True)
+    district = Column(String, nullable=True)
+    preferred_language = Column(String, nullable=False, default="si", server_default="si")
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
 

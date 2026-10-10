@@ -1,0 +1,7 @@
+-- Explicit additive migration. Back up PostgreSQL first; never run at startup.
+BEGIN;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS role VARCHAR NOT NULL DEFAULT 'FARMER';
+ALTER TABLE users ADD COLUMN IF NOT EXISTS phone VARCHAR;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS district VARCHAR;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS preferred_language VARCHAR NOT NULL DEFAULT 'si';
+COMMIT;

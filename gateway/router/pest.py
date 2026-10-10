@@ -1,7 +1,8 @@
 """Routes pest image requests to C3 pest_detection service."""
-from fastapi import APIRouter, UploadFile, File, HTTPException
+from fastapi import Request, APIRouter, UploadFile, File, HTTPException
 from fastapi.responses import JSONResponse
 from services.service_client import downstream_response, service_base_url
+from services.activity import observe
 import httpx, os
 
 router = APIRouter()
@@ -9,7 +10,10 @@ PEST_DETECTION_URL = service_base_url("PEST_DETECTION_URL", "http://pest_detecti
 
 
 @router.post("/detect")
-async def detect_pest(image: UploadFile = File(...)):
+async def detect_pest(request: Request, image: UploadFile = File(None), file: UploadFile = File(None)):
+    if (image is None) == (file is None):
+        raise HTTPException(422, "Supply exactly one image or file field")
+    image = image or file
     """Forward pest image to C3 for pest identification.
 
     C3's real endpoint is POST /detect with the image sent under the
@@ -20,6 +24,7 @@ async def detect_pest(image: UploadFile = File(...)):
         files = {"file": (image.filename, content, image.content_type)}
         async with httpx.AsyncClient(timeout=60.0) as client:
             response = await client.post(f"{PEST_DETECTION_URL}/detect", files=files)
+        await observe(request, response, "PEST_DIAGNOSIS_COMPLETED")
         try:
             data = response.json()
         except ValueError:

@@ -9,7 +9,7 @@ import os
 
 load_dotenv()
 
-from router import voice, image, pest, chat, user
+from router import voice, image, pest, chat, user, community
 
 app = FastAPI(
     title="PaddyGuard AI — API Gateway",
@@ -20,14 +20,15 @@ app = FastAPI(
 # CORS — allow frontend origin
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[origin.strip() for origin in os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",") if origin.strip()],
-    allow_credentials="*" not in [origin.strip() for origin in os.getenv("ALLOWED_ORIGINS", "http://localhost:5173").split(",")],
+    allow_origins=[origin.strip() for origin in os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,https://research-2026-eta.vercel.app").split(",") if origin.strip()],
+    allow_credentials="*" not in [origin.strip() for origin in os.getenv("ALLOWED_ORIGINS", "http://localhost:5173,https://research-2026-eta.vercel.app").split(",")],
     allow_methods=["*"],
     allow_headers=["*"],
     expose_headers=["Content-Disposition"],
 )
 
 # Include service routers
+app.include_router(community.router, prefix="/api/v1", tags=["Profiles, feedback and administration"])
 app.include_router(voice.router, prefix="/api/v1/voice", tags=["Voice NLP — C1"])
 app.include_router(image.router, prefix="/api/v1/image", tags=["Leaf Disease — C2"])
 app.include_router(pest.router,  prefix="/api/v1/pest",  tags=["Pest Detection — C3"])
